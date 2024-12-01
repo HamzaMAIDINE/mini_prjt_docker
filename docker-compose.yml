@@ -1,0 +1,114 @@
+version: '3.9'
+
+services:
+  hadoop-namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-namenode
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+    ports:
+      - 9870:9870
+    volumes:
+      - namenode-data:/hadoop/dfs/name
+    networks:
+      - bigdata-net
+
+  hadoop-datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-datanode
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:8020
+    depends_on:
+      - hadoop-namenode
+    ports:
+      - 9864:9864
+    volumes:
+      - datanode-data:/hadoop/dfs/data
+    networks:
+      - bigdata-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    networks:
+      - bigdata-net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    ports:
+      - 2181:2181
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - bigdata-net
+
+  spark-master:
+    image: bitnami/spark:3.5
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - 7077:7077
+      - 8080:8080
+    networks:
+      - bigdata-net
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      - spark-master
+    networks:
+      - bigdata-net
+
+  postgresql:
+    image: postgres:15
+    container_name: postgresql
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: bigdata
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - bigdata-net
+
+  timescale:
+    image: timescale/timescaledb:latest-pg15
+    container_name: timescaledb
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: timeseries
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    networks:
+      - bigdata-net
+
+volumes:
+  namenode-data:
+  datanode-data:
+  pgdata:
+  timescale-data:
+
+networks:
+  bigdata-net:
+    driver: bridge
