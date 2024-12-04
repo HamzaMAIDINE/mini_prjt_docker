@@ -65,9 +65,20 @@ services:
     networks:
       - bigdata-net
 
-  spark-worker:
+  spark-worker-1:
     image: bitnami/spark:3.5
-    container_name: spark-worker
+    container_name: spark-worker-1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      - spark-master
+    networks:
+      - bigdata-net
+
+  spark-worker-2:
+    image: bitnami/spark:3.5
+    container_name: spark-worker-2
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
