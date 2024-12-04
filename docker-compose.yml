@@ -6,6 +6,7 @@ services:
     container_name: hadoop-namenode
     environment:
       - CLUSTER_NAME=hadoop-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://localhost:8020
     ports:
       - 9870:9870
     volumes:
@@ -18,7 +19,7 @@ services:
     container_name: hadoop-datanode
     environment:
       - CLUSTER_NAME=hadoop-cluster
-      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:8020
+      - CORE_CONF_fs_defaultFS=hdfs://localhost:8020
     depends_on:
       - hadoop-namenode
     ports:
@@ -75,39 +76,46 @@ services:
     networks:
       - bigdata-net
 
-  postgresql:
-    image: postgres:15
-    container_name: postgresql
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
     ports:
-      - 5432:5432
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: bigdata
+      - 27017:27017
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongodb-data:/data/db
     networks:
       - bigdata-net
 
-  timescale:
-    image: timescale/timescaledb:latest-pg15
-    container_name: timescaledb
-    ports:
-      - 5433:5432
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: timeseries
+  nodejs:
+    image: node:16
+    container_name: nodejs
+    working_dir: /app
     volumes:
-      - timescale-data:/var/lib/postgresql/data
+      - ./nodejs:/app
+    ports:
+      - 3000:3000
+    command: ["npm", "start"]
+    networks:
+      - bigdata-net
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.3
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - 9200:9200
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
     networks:
       - bigdata-net
 
 volumes:
   namenode-data:
   datanode-data:
-  pgdata:
-  timescale-data:
+  mongodb-data:
+  elasticsearch-data:
 
 networks:
   bigdata-net:
